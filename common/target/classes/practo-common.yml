@@ -1,0 +1,31 @@
+# Shared defaults, imported by every service's application.yml (spring.config.import).
+# Inside Lambda the SAM template sets the environment variables; locally you set them yourself.
+app:
+  region: ${AWS_REGION:ap-south-1}
+  # Empty means real DynamoDB. Set to http://localhost:8000 for DynamoDB Local.
+  dynamodb-endpoint: ${DYNAMODB_ENDPOINT:}
+  tables:
+    users: ${USERS_TABLE:practo-lite-Users}
+    doctors: ${DOCTORS_TABLE:practo-lite-Doctors}
+    slots: ${SLOTS_TABLE:practo-lite-Slots}
+    appointments: ${APPOINTMENTS_TABLE:practo-lite-Appointments}
+  security:
+    dev-headers: ${DEV_HEADERS_AUTH:false}
+  diagnostics:
+    headers: ${EXPOSE_DIAGNOSTICS:false}
+
+spring:
+  main:
+    banner-mode: off
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true
+  mvc:
+    problemdetails:
+      enabled: false
+
+logging:
+  level:
+    root: WARN
+    edu.dau.practolite: INFO
