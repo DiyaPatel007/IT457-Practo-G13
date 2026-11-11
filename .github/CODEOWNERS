@@ -1,0 +1,22 @@
+# Replace the placeholders with your real GitHub usernames (keep the @ in this file only).
+# The owner is requested automatically as a reviewer for changes to these paths.
+# Member A = Diya, Member B = Jevik, Member C = Gautam (change if you swap slices).
+
+/users-service/            @JevikBhalodia
+/doctors-service/          @2601Gautam
+/appointments-service/     @DiyaPatel007
+
+/common/                   @JevikBhalodia @2601Gautam @DiyaPatel007
+/infra/                    @JevikBhalodia @2601Gautam @DiyaPatel007
+/test-support/             @DiyaPatel007 @2601Gautam
+
+/scripts/cold_start_probe.py   @JevikBhalodia
+/scripts/cost_calc.py          @JevikBhalodia
+/scripts/cloudwatch_export.py  @JevikBhalodia
+/scripts/seed.py               @2601Gautam
+/load-tests/k6/latency.js      @2601Gautam
+/load-tests/k6/scaling.js      @2601Gautam
+/scripts/reset.py              @DiyaPatel007
+/scripts/consistency_check.py  @DiyaPatel007
+/load-tests/k6/race.js         @DiyaPatel007
+/load-tests/k6/cancel_race.js  @DiyaPatel007
