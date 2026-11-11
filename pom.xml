@@ -12,11 +12,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>edu.dau.practo</groupId>
-    <artifactId>practo</artifactId>
+    <groupId>edu.dau.practolite</groupId>
+    <artifactId>practo-lite</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
-    <name>practo</name>
+    <name>practo-lite</name>
     <description>Practo-inspired serverless appointment platform (IT457 Cloud Computing, Group 13)</description>
 
     <modules>
@@ -44,12 +44,12 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>edu.dau.practo</groupId>
+                <groupId>edu.dau.practolite</groupId>
                 <artifactId>common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>edu.dau.practo</groupId>
+                <groupId>edu.dau.practolite</groupId>
                 <artifactId>test-support</artifactId>
                 <version>${project.version}</version>
             </dependency>
