@@ -8,3 +8,6 @@
 .classpath
 .project
 .settings/
+
+# DynamoDB Local generated metadata
+**/dynamodb-local-metadata.json
