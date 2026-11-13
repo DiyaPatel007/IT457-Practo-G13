@@ -24,6 +24,7 @@
         <module>test-support</module>
         <module>users-service</module>
         <module>doctors-service</module>
+        <module>appointments-service</module>
     </modules>
 
     <properties>

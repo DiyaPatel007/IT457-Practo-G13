@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: appointments-service
+  config:
+    import: classpath:practo-common.yml
+
+booking:
+  # transactional (correct, default) or naive (read-then-write, ONLY for Experiment 4 contrast runs)
+  mode: ${BOOKING_MODE:transactional}
+  # Optional pause (ms) between the naive read and write, to make the race window visible.
+  # Keep 0 unless the report states the value used.
+  naive-delay-ms: ${NAIVE_DELAY_MS:0}
+  # true: cancel only before the slot starts; complete/no-show only after it starts.
+  # false lets a live demo mark an appointment completed straight away.
+  strict-time-rules: ${STRICT_TIME_RULES:true}
+
+server:
+  port: ${PORT:8083}
