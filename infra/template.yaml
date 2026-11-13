@@ -89,6 +89,8 @@ Globals:
     Environment:
       Variables:
         USERS_TABLE: !Ref UsersTable
+        DOCTORS_TABLE: !Ref DoctorsTable
+        SLOTS_TABLE: !Ref SlotsTable
         EXPOSE_DIAGNOSTICS: !Ref ExposeDiagnostics
         PRIMING_ENABLED: !Ref PrimingEnabled
         # Faster JVM start: stop JIT at the C1 tier (common cold-start optimisation for Java on Lambda).
@@ -170,6 +172,41 @@ Resources:
       KeySchema:
         - {AttributeName: userId, KeyType: HASH}
       Tags: [{Key: Project, Value: practo-lite}]
+  DoctorsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Doctors
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: doctorId, AttributeType: S }
+        - { AttributeName: searchCity, AttributeType: S }
+        - { AttributeName: specKey, AttributeType: S }
+      KeySchema:
+        - { AttributeName: doctorId, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: search-index
+          KeySchema:
+            - { AttributeName: searchCity, KeyType: HASH }
+            - { AttributeName: specKey, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+      Tags: [ { Key: Project, Value: practo-lite } ]
+
+  SlotsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Slots
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: doctorId, AttributeType: S }
+        - { AttributeName: slotStart, AttributeType: S }
+      KeySchema:
+        - { AttributeName: doctorId, KeyType: HASH }
+        - { AttributeName: slotStart, KeyType: RANGE }
+      Tags: [ { Key: Project, Value: practo-lite } ]
 
   # =========================================================================
   # API Gateway HTTP API with a Cognito JWT authorizer.
@@ -207,6 +244,51 @@ Resources:
         MaxAge: 600
       Tags:
         Project: practo-lite
+  DoctorsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-doctors
+      RetentionInDays: !Ref LogRetentionDays
+
+  DoctorsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: DoctorsLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-doctors
+      Description: Spring Boot - doctor profiles, search, slots
+      CodeUri: ../doctors-service/target/doctors-service-lambda.zip
+      Handler: edu.dau.practolite.doctors.StreamLambdaHandler::handleRequest
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [ dynamodb:GetItem, dynamodb:UpdateItem ]
+              Resource: !GetAtt DoctorsTable.Arn
+            - Effect: Allow
+              Action: [ dynamodb:Query ]
+              Resource: !Sub ${DoctorsTable.Arn}/index/search-index
+            - Effect: Allow
+              Action: [ dynamodb:PutItem, dynamodb:Query, dynamodb:DeleteItem ]
+              Resource: !GetAtt SlotsTable.Arn
+      Events:
+        PutProfile:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: PUT, Path: '/doctors/me' }
+        Search:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: '/doctors', Auth: { Authorizer: NONE } }
+        GetDoctor:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}', Auth: { Authorizer: NONE } }
+        CreateSlots:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: '/doctors/me/slots' }
+        ListSlots:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}/slots', Auth: { Authorizer: NONE } }
+        DeleteSlot:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: DELETE, Path: '/doctors/me/slots/{slotStart}' }
 
 
   # =========================================================================
@@ -265,3 +347,9 @@ Outputs:
     Value: !Ref UserPoolClient
   UsersTableName:
     Value: !Ref UsersTable
+  DoctorsTableName:
+    Value: !Ref DoctorsTable
+  DoctorsFunctionName:
+    Value: !Ref DoctorsFunction
+  SlotsTableName:
+    Value: !Ref SlotsTable
