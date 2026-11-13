@@ -1,0 +1,49 @@
+# sam deploy reads this file. Run from the infra/ folder AFTER "mvn package" in the project root.
+# Never run "sam build": Maven already builds the Lambda zips that template.yaml points to.
+#
+#   sam deploy                         -> shared stack "practo-lite" (demo + experiments)
+#   sam deploy --config-env diya       -> personal stack for development (delete it after merging!)
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "practo-lite"
+region = "ap-south-1"
+resolve_s3 = true
+s3_prefix = "practo-lite"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false
+tags = "Project=\"practo-lite\""
+
+[diya.deploy.parameters]
+stack_name = "practo-lite-diya"
+region = "ap-south-1"
+resolve_s3 = true
+s3_prefix = "practo-lite-diya"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false
+tags = "Project=\"practo-lite\" Owner=\"diya\""
+parameter_overrides = "SnapStartMode=None"
+
+[jevik.deploy.parameters]
+stack_name = "practo-lite-jevik"
+region = "ap-south-1"
+resolve_s3 = true
+s3_prefix = "practo-lite-jevik"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false
+tags = "Project=\"practo-lite\" Owner=\"jevik\""
+parameter_overrides = "SnapStartMode=None"
+
+[gautam.deploy.parameters]
+stack_name = "practo-lite-gautam"
+region = "ap-south-1"
+resolve_s3 = true
+s3_prefix = "practo-lite-gautam"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false
+tags = "Project=\"practo-lite\" Owner=\"gautam\""
+parameter_overrides = "SnapStartMode=None"

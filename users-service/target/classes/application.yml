@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: users-service
+  config:
+    import: classpath:practo-common.yml
+
+cognito:
+  # Set by the SAM template. The default lets unit tests and local runs start without AWS.
+  user-pool-id: ${USER_POOL_ID:ap-south-1_local}
+  # Local development only: in-memory Cognito replacement. Never set in Lambda.
+  fake: ${COGNITO_FAKE:false}
+
+server:
+  port: ${PORT:8081}

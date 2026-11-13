@@ -1,10 +1,15 @@
+# Runs on every pull request and every push to main/develop. No AWS credentials are used:
+# the Java tests run against an embedded DynamoDB Local, and deployment is done by hand.
 name: ci
+
 on:
   pull_request:
   push:
     branches: [main, develop]
+
 permissions:
   contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -17,3 +22,10 @@ jobs:
           cache: maven
       - name: Build, unit tests, Lambda handler tests, booking race test
         run: mvn -B verify
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Lint the SAM template
+        run: |
+          pip install --quiet cfn-lint
+          cfn-lint --regions ap-south-1 -- infra/template.yaml
