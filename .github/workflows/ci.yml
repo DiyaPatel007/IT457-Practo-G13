@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Check Python scripts compile
-        run: python -m py_compile scripts/*.py analysis/charts.py
+        run: python -m py_compile scripts/*.py analysis/charts.py postman/generate_collection.py
       - name: Lint the SAM template
         run: |
           pip install --quiet cfn-lint
