@@ -214,6 +214,38 @@ def scaling(run: Path) -> None:
 
 
 # --------------------------------------------------------------------------- Experiment 4
+def race(base: Path) -> None:
+    rows = []
+    for path in sorted(base.glob("*/run*/k6.csv*")):
+        mode, run = path.parent.parent.name, path.parent.name
+        df = read_k6(path)
+        df = df[df["name"] == "POST /appointments"]
+        cons_file = path.parent / "consistency.json"
+        cons = json.loads(cons_file.read_text()) if cons_file.exists() else {}
+        for scenario, g in df.groupby("scenario"):
+            rows.append({"mode": mode, "run": run, "slot": scenario,
+                         "201": int((g["status"] == 201).sum()), "409": int((g["status"] == 409).sum()),
+                         "503": int((g["status"] == 503).sum()),
+                         "other": int((~g["status"].isin([201, 409, 503])).sum())})
+        if cons:
+            print(f"{mode}/{run}: invariant violations={cons.get('violations')} "
+                  f"double-booked slots={cons.get('doubleBookedSlots')}")
+    if not rows:
+        sys.exit(f"no <mode>/run*/k6.csv(.gz) under {base}")
+    df = pd.DataFrame(rows)
+    o = out_dir(base)
+    df.to_csv(o / "race_per_slot.csv", index=False)
+    per_run = df.groupby(["mode", "run"])[["201", "409", "503", "other"]].sum()
+    per_run["slots"] = df.groupby(["mode", "run"])["slot"].nunique()
+    per_run["slots_with_more_than_one_201"] = df[df["201"] > 1].groupby(["mode", "run"])["slot"].nunique()
+    per_run = per_run.fillna(0)
+    per_run.to_csv(o / "race_per_run.csv")
+    print(per_run.to_string())
+    fig, ax = plt.subplots(figsize=(9, 5))
+    per_run[["201", "409", "503", "other"]].plot(kind="bar", stacked=True, ax=ax, color=COLORS[:4])
+    ax.set_ylabel("responses")
+    ax.set_title("Experiment 4: outcomes of simultaneous bookings of the same slots")
+    save(fig, o / "race_outcomes.png")
 
 # --------------------------------------------------------------------------- Experiment 5
 def cost(base: Path) -> None:
@@ -242,7 +274,7 @@ def cost(base: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("chart", choices=["coldstart", "latency", "breakdown", "scaling", "cost"])
+    parser.add_argument("chart", choices=["coldstart", "latency", "breakdown", "scaling", "cost", "race"])
     parser.add_argument("path", type=Path)
     args = parser.parse_args()
     globals()[args.chart](args.path)
