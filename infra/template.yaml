@@ -173,6 +173,7 @@ Resources:
       KeySchema:
         - {AttributeName: userId, KeyType: HASH}
       Tags: [{Key: Project, Value: practo-lite}]
+
   DoctorsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Delete
@@ -181,18 +182,18 @@ Resources:
       TableName: !Sub ${AWS::StackName}-Doctors
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - { AttributeName: doctorId, AttributeType: S }
-        - { AttributeName: searchCity, AttributeType: S }
-        - { AttributeName: specKey, AttributeType: S }
+        - {AttributeName: doctorId, AttributeType: S}
+        - {AttributeName: searchCity, AttributeType: S}
+        - {AttributeName: specKey, AttributeType: S}
       KeySchema:
-        - { AttributeName: doctorId, KeyType: HASH }
+        - {AttributeName: doctorId, KeyType: HASH}
       GlobalSecondaryIndexes:
-        - IndexName: search-index
+        - IndexName: search-index        # sparse: only verified doctors have searchCity/specKey
           KeySchema:
-            - { AttributeName: searchCity, KeyType: HASH }
-            - { AttributeName: specKey, KeyType: RANGE }
-          Projection: { ProjectionType: ALL }
-      Tags: [ { Key: Project, Value: practo-lite } ]
+            - {AttributeName: searchCity, KeyType: HASH}
+            - {AttributeName: specKey, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+      Tags: [{Key: Project, Value: practo-lite}]
 
   SlotsTable:
     Type: AWS::DynamoDB::Table
@@ -202,12 +203,13 @@ Resources:
       TableName: !Sub ${AWS::StackName}-Slots
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - { AttributeName: doctorId, AttributeType: S }
-        - { AttributeName: slotStart, AttributeType: S }
+        - {AttributeName: doctorId, AttributeType: S}
+        - {AttributeName: slotStart, AttributeType: S}
       KeySchema:
-        - { AttributeName: doctorId, KeyType: HASH }
-        - { AttributeName: slotStart, KeyType: RANGE }
-      Tags: [ { Key: Project, Value: practo-lite } ]
+        - {AttributeName: doctorId, KeyType: HASH}
+        - {AttributeName: slotStart, KeyType: RANGE}
+      Tags: [{Key: Project, Value: practo-lite}]
+
   AppointmentsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Delete
@@ -216,24 +218,24 @@ Resources:
       TableName: !Sub ${AWS::StackName}-Appointments
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - { AttributeName: appointmentId, AttributeType: S }
-        - { AttributeName: patientId, AttributeType: S }
-        - { AttributeName: doctorId, AttributeType: S }
-        - { AttributeName: slotStart, AttributeType: S }
+        - {AttributeName: appointmentId, AttributeType: S}
+        - {AttributeName: patientId, AttributeType: S}
+        - {AttributeName: doctorId, AttributeType: S}
+        - {AttributeName: slotStart, AttributeType: S}
       KeySchema:
-        - { AttributeName: appointmentId, KeyType: HASH }
+        - {AttributeName: appointmentId, KeyType: HASH}
       GlobalSecondaryIndexes:
         - IndexName: patient-index
           KeySchema:
-            - { AttributeName: patientId, KeyType: HASH }
-            - { AttributeName: slotStart, KeyType: RANGE }
-          Projection: { ProjectionType: ALL }
+            - {AttributeName: patientId, KeyType: HASH}
+            - {AttributeName: slotStart, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
         - IndexName: doctor-index
           KeySchema:
-            - { AttributeName: doctorId, KeyType: HASH }
-            - { AttributeName: slotStart, KeyType: RANGE }
-          Projection: { ProjectionType: ALL }
-      Tags: [ { Key: Project, Value: practo-lite } ]
+            - {AttributeName: doctorId, KeyType: HASH}
+            - {AttributeName: slotStart, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+      Tags: [{Key: Project, Value: practo-lite}]
 
   # =========================================================================
   # API Gateway HTTP API with a Cognito JWT authorizer.
@@ -271,6 +273,53 @@ Resources:
         MaxAge: 600
       Tags:
         Project: practo-lite
+
+  # =========================================================================
+  # Lambda functions. Each is a Spring Boot application packaged by Maven as a zip.
+  # The log group is created first (DependsOn) so its 7-day retention applies even
+  # to the logs written while SnapStart initialises a new version.
+  # =========================================================================
+  UsersLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-users
+      RetentionInDays: !Ref LogRetentionDays
+
+  UsersFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: UsersLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-users
+      Description: Spring Boot - register, own profile, admin doctor verification
+      CodeUri: ../users-service/target/users-service-lambda.zip
+      Handler: edu.dau.practolite.users.StreamLambdaHandler::handleRequest
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:DeleteItem]
+              Resource: [!GetAtt UsersTable.Arn, !GetAtt DoctorsTable.Arn]
+            - Effect: Allow
+              Action: [cognito-idp:AdminCreateUser, cognito-idp:AdminSetUserPassword,
+                       cognito-idp:AdminAddUserToGroup, cognito-idp:AdminDeleteUser]
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Register:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/auth/register', Auth: {Authorizer: NONE}}
+        GetMe:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/users/me'}
+        PatchMe:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: PATCH, Path: '/users/me'}
+        VerifyDoctor:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: PATCH, Path: '/admin/doctors/{doctorId}/verify'}
+
   DoctorsLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
@@ -289,33 +338,33 @@ Resources:
       Policies:
         - Statement:
             - Effect: Allow
-              Action: [ dynamodb:GetItem, dynamodb:UpdateItem ]
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
               Resource: !GetAtt DoctorsTable.Arn
             - Effect: Allow
-              Action: [ dynamodb:Query ]
+              Action: [dynamodb:Query]
               Resource: !Sub ${DoctorsTable.Arn}/index/search-index
             - Effect: Allow
-              Action: [ dynamodb:PutItem, dynamodb:Query, dynamodb:DeleteItem ]
+              Action: [dynamodb:PutItem, dynamodb:Query, dynamodb:DeleteItem]
               Resource: !GetAtt SlotsTable.Arn
       Events:
         PutProfile:
           Type: HttpApi
-          Properties: { ApiId: !Ref HttpApi, Method: PUT, Path: '/doctors/me' }
+          Properties: {ApiId: !Ref HttpApi, Method: PUT, Path: '/doctors/me'}
         Search:
           Type: HttpApi
-          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: '/doctors', Auth: { Authorizer: NONE } }
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/doctors', Auth: {Authorizer: NONE}}
         GetDoctor:
           Type: HttpApi
-          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}', Auth: { Authorizer: NONE } }
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}', Auth: {Authorizer: NONE}}
         CreateSlots:
           Type: HttpApi
-          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: '/doctors/me/slots' }
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/doctors/me/slots'}
         ListSlots:
           Type: HttpApi
-          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}/slots', Auth: { Authorizer: NONE } }
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}/slots', Auth: {Authorizer: NONE}}
         DeleteSlot:
           Type: HttpApi
-          Properties: { ApiId: !Ref HttpApi, Method: DELETE, Path: '/doctors/me/slots/{slotStart}' }
+          Properties: {ApiId: !Ref HttpApi, Method: DELETE, Path: '/doctors/me/slots/{slotStart}'}
 
   AppointmentsLogGroup:
     Type: AWS::Logs::LogGroup
@@ -368,10 +417,44 @@ Resources:
           Type: HttpApi
           Properties: {ApiId: !Ref HttpApi, Method: PATCH, Path: '/appointments/{appointmentId}/status'}
 
-
   # =========================================================================
   # Amazon CloudWatch: one dashboard for the experiments, a few alarms.
   # =========================================================================
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {"type":"metric","x":0,"y":0,"width":12,"height":6,"properties":{
+              "title":"Lambda invocations / min","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","Invocations","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":12,"y":0,"width":12,"height":6,"properties":{
+              "title":"Lambda concurrent executions (max)","region":"${AWS::Region}","stat":"Maximum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","ConcurrentExecutions","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":0,"y":6,"width":12,"height":6,"properties":{
+              "title":"Lambda duration p95 (ms)","region":"${AWS::Region}","stat":"p95","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","Duration","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":12,"y":6,"width":12,"height":6,"properties":{
+              "title":"Lambda throttles and errors","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","Throttles","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"],
+                         ["AWS/Lambda","Errors","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":0,"y":12,"width":12,"height":6,"properties":{
+              "title":"API latency vs integration latency p95 (ms)","region":"${AWS::Region}","stat":"p95","period":60,"view":"timeSeries",
+              "metrics":[["AWS/ApiGateway","Latency","ApiId","${HttpApi}","Stage","$default"],[".","IntegrationLatency",".",".",".","."]]}},
+            {"type":"metric","x":12,"y":12,"width":12,"height":6,"properties":{
+              "title":"API requests, 4xx, 5xx","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/ApiGateway","Count","ApiId","${HttpApi}","Stage","$default"],[".","4xx",".",".",".","."],[".","5xx",".",".",".","."]]}},
+            {"type":"metric","x":0,"y":18,"width":12,"height":6,"properties":{
+              "title":"DynamoDB consumed write units","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/DynamoDB","ConsumedWriteCapacityUnits","TableName","${SlotsTable}"],["...","${AppointmentsTable}"],["...","${DoctorsTable}"],["...","${UsersTable}"]]}},
+            {"type":"metric","x":12,"y":18,"width":12,"height":6,"properties":{
+              "title":"DynamoDB throttled requests and transaction conflicts","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/DynamoDB","ThrottledRequests","TableName","${SlotsTable}"],["...","${AppointmentsTable}"],
+                         ["AWS/DynamoDB","TransactionConflict","TableName","${SlotsTable}"]]}}
+          ]
+        }
 
   AlarmTopic:
     Type: AWS::SNS::Topic
@@ -443,11 +526,15 @@ Outputs:
     Value: !Ref UsersTable
   DoctorsTableName:
     Value: !Ref DoctorsTable
-  DoctorsFunctionName:
-    Value: !Ref DoctorsFunction
   SlotsTableName:
     Value: !Ref SlotsTable
   AppointmentsTableName:
     Value: !Ref AppointmentsTable
+  UsersFunctionName:
+    Value: !Ref UsersFunction
+  DoctorsFunctionName:
+    Value: !Ref DoctorsFunction
   AppointmentsFunctionName:
     Value: !Ref AppointmentsFunction
+  DashboardUrl:
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-dashboard
