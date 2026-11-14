@@ -50,10 +50,63 @@ def read_k6(path: Path) -> pd.DataFrame:
     df["status"] = pd.to_numeric(df["status"], errors="coerce")
     return df
 
+def coldstart(base: Path) -> None:
+    frames = [pd.read_csv(p) for p in sorted(base.glob("*/probe.csv"))]
+    if not frames:
+        sys.exit(f"no */probe.csv under {base}")
+    df = pd.concat(frames, ignore_index=True)
+    df["cold"] = df["cold_by_report"].astype(str).str.lower().eq("true")
+    for col in ("init_ms", "restore_ms", "duration_ms", "billed_ms"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    rows = []
+    for label, g in df.groupby("label"):
+        cold, warm = g[g["cold"]], g[~g["cold"]]
+        rows.append({
+            "variant": label, "requests": len(g), "cold_samples": len(cold),
+            "cold_client_p50_ms": cold["client_ms"].median(), "cold_client_p95_ms": cold["client_ms"].quantile(.95),
+            "warm_client_p50_ms": warm["client_ms"].median(), "warm_client_p95_ms": warm["client_ms"].quantile(.95),
+            "init_p50_ms": cold["init_ms"].median(), "restore_p50_ms": cold["restore_ms"].median(),
+            "cold_billed_p50_ms": cold["billed_ms"].median(), "warm_billed_p50_ms": warm["billed_ms"].median(),
+            "request1_p50_ms": g[g["request_index"] == 1]["client_ms"].median(),
+            "request100_p50_ms": g[g["request_index"] == g["request_index"].max()]["client_ms"].median(),
+        })
+    summary = pd.DataFrame(rows)
+    o = out_dir(base)
+    summary.to_csv(o / "coldstart_summary.csv", index=False)
+    print(summary.to_string(index=False))
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    for i, (label, g) in enumerate(df.groupby("label")):
+        per_idx = g.groupby("request_index")["client_ms"]
+        med, lo, hi = per_idx.median(), per_idx.min(), per_idx.max()
+        ax.plot(med.index, med.values, label=f"{label} (median of {g['cycle'].nunique()} cycles)",
+                color=COLORS[i % len(COLORS)])
+        ax.fill_between(med.index, lo.values, hi.values, alpha=.15, color=COLORS[i % len(COLORS)])
+    ax.set_yscale("log")
+    ax.set_xlabel("request number after a new version (1 = first request)")
+    ax.set_ylabel("client latency (ms, log scale)")
+    ax.set_title("Experiment 1: first request vs consecutive requests")
+    ax.legend()
+    save(fig, o / "coldstart_by_request_index.png")
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    labels, data = [], []
+    for label, g in df.groupby("label"):
+        for kind, part in (("cold", g[g["cold"]]), ("warm", g[~g["cold"]])):
+            if len(part):
+                labels.append(f"{label}\n{kind}")
+                data.append(part["client_ms"].values)
+    ax.boxplot(data, tick_labels=labels, showfliers=False)
+    ax.set_yscale("log")
+    ax.set_ylabel("client latency (ms, log scale)")
+    ax.set_title("Experiment 1: cold vs warm by variant (classified from REPORT lines)")
+    save(fig, o / "coldstart_boxplot.png")
 
 # --------------------------------------------------------------------------- Experiment 1
 
 # --------------------------------------------------------------------------- Experiment 2
+
 def latency(base: Path) -> None:
     rows = []
     for path in sorted(base.glob("vus-*/run*/k6.csv*")):
@@ -163,11 +216,33 @@ def scaling(run: Path) -> None:
 # --------------------------------------------------------------------------- Experiment 4
 
 # --------------------------------------------------------------------------- Experiment 5
+def cost(base: Path) -> None:
+    rows = []
+    for path in sorted(base.rglob("cost.json")):
+        c = json.loads(path.read_text())
+        row = {"run": str(path.parent.relative_to(base)), "requests": c["usage"]["api_requests"],
+               "per_1000_usd": c["cost_per_1000_requests_usd"], "per_1m_usd": c["cost_per_1m_requests_usd"]}
+        req = c["usage"]["api_requests"] or c["usage"]["invocations"]
+        for k, v in c["cost_usd"].items():
+            row[k] = 1000 * v / req if req else None
+        rows.append(row)
+    if not rows:
+        sys.exit(f"no cost.json under {base}")
+    df = pd.DataFrame(rows).set_index("run")
+    o = out_dir(base)
+    df.to_csv(o / "cost_summary.csv")
+    print(df.to_string())
+    parts = [c for c in df.columns if c not in ("requests", "per_1000_usd", "per_1m_usd")]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    df[parts].plot(kind="bar", stacked=True, ax=ax, color=COLORS)
+    ax.set_ylabel("USD per 1,000 requests (no free tier)")
+    ax.set_title("Experiment 5: cost per 1,000 requests by service")
+    save(fig, o / "cost_per_1000.png")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("chart", choices=["latency", "breakdown", "scaling"])
+    parser.add_argument("chart", choices=["coldstart", "latency", "breakdown", "scaling", "cost"])
     parser.add_argument("path", type=Path)
     args = parser.parse_args()
     globals()[args.chart](args.path)
