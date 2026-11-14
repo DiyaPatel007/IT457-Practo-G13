@@ -91,6 +91,7 @@ Globals:
         USERS_TABLE: !Ref UsersTable
         DOCTORS_TABLE: !Ref DoctorsTable
         SLOTS_TABLE: !Ref SlotsTable
+        APPOINTMENTS_TABLE: !Ref AppointmentsTable
         EXPOSE_DIAGNOSTICS: !Ref ExposeDiagnostics
         PRIMING_ENABLED: !Ref PrimingEnabled
         # Faster JVM start: stop JIT at the C1 tier (common cold-start optimisation for Java on Lambda).
@@ -207,6 +208,32 @@ Resources:
         - { AttributeName: doctorId, KeyType: HASH }
         - { AttributeName: slotStart, KeyType: RANGE }
       Tags: [ { Key: Project, Value: practo-lite } ]
+  AppointmentsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Appointments
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: appointmentId, AttributeType: S }
+        - { AttributeName: patientId, AttributeType: S }
+        - { AttributeName: doctorId, AttributeType: S }
+        - { AttributeName: slotStart, AttributeType: S }
+      KeySchema:
+        - { AttributeName: appointmentId, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: patient-index
+          KeySchema:
+            - { AttributeName: patientId, KeyType: HASH }
+            - { AttributeName: slotStart, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+        - IndexName: doctor-index
+          KeySchema:
+            - { AttributeName: doctorId, KeyType: HASH }
+            - { AttributeName: slotStart, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+      Tags: [ { Key: Project, Value: practo-lite } ]
 
   # =========================================================================
   # API Gateway HTTP API with a Cognito JWT authorizer.
@@ -290,6 +317,57 @@ Resources:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: DELETE, Path: '/doctors/me/slots/{slotStart}' }
 
+  AppointmentsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-appointments
+      RetentionInDays: !Ref LogRetentionDays
+
+  AppointmentsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: AppointmentsLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-appointments
+      Description: Spring Boot - booking (DynamoDB transaction), cancel, status, listing
+      CodeUri: ../appointments-service/target/appointments-service-lambda.zip
+      Handler: edu.dau.practolite.appointments.StreamLambdaHandler::handleRequest
+      Environment:
+        Variables:
+          BOOKING_MODE: !Ref BookingMode
+          NAIVE_DELAY_MS: !Ref NaiveDelayMs
+          STRICT_TIME_RULES: !Ref StrictTimeRules
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
+              Resource: !GetAtt AppointmentsTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !Sub ${AppointmentsTable.Arn}/index/*
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]   # UpdateItem inside the booking/cancel transaction
+              Resource: !GetAtt SlotsTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem]                        # read-only lookups of names / verification
+              Resource: [!GetAtt DoctorsTable.Arn, !GetAtt UsersTable.Arn]
+      Events:
+        Book:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/appointments'}
+        List:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/appointments'}
+        GetOne:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/appointments/{appointmentId}'}
+        Cancel:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/appointments/{appointmentId}/cancel'}
+        Status:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: PATCH, Path: '/appointments/{appointmentId}/status'}
+
 
   # =========================================================================
   # Amazon CloudWatch: one dashboard for the experiments, a few alarms.
@@ -318,6 +396,22 @@ Resources:
       Period: 300
       EvaluationPeriods: 1
       Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmEmail, [!Ref AlarmTopic], !Ref AWS::NoValue]
+
+  AppointmentsErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-appointments-errors
+      AlarmDescription: Unhandled errors in the booking function
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{Name: FunctionName, Value: !Ref AppointmentsFunction}]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
       AlarmActions: !If [HasAlarmEmail, [!Ref AlarmTopic], !Ref AWS::NoValue]
@@ -353,3 +447,7 @@ Outputs:
     Value: !Ref DoctorsFunction
   SlotsTableName:
     Value: !Ref SlotsTable
+  AppointmentsTableName:
+    Value: !Ref AppointmentsTable
+  AppointmentsFunctionName:
+    Value: !Ref AppointmentsFunction
