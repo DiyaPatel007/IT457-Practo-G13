@@ -1,0 +1,43 @@
+# Maven build output
+**/target/
+*.class
+
+# AWS SAM (we never run "sam build", but keep its folder out if someone does)
+.aws-sam/
+
+# Generated test passwords and IDs (scripts/seed.py) - NEVER commit
+scripts/.seed/
+
+# Secrets and local settings
+.env
+*.pem
+.aws/
+infra/samconfig.local.toml
+
+# DynamoDB Local generated metadata
+**/dynamodb-local-metadata.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp

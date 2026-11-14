@@ -1,0 +1,540 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Practo-Lite (IT457 Group 13): Spring Boot on AWS Lambda behind an API Gateway HTTP API,
+  with Cognito authentication and DynamoDB. Deploy with: mvn package, then sam deploy (no sam build).
+
+# ---------------------------------------------------------------------------
+# Parameters: the experiment variables are here, so changing a variant is one
+# "sam deploy --parameter-overrides ..." and never a code change.
+# ---------------------------------------------------------------------------
+Parameters:
+  SnapStartMode:
+    Type: String
+    Default: PublishedVersions
+    AllowedValues: [None, PublishedVersions]
+    Description: Experiment 1 variable. None = classic cold start, PublishedVersions = SnapStart.
+  PrimingEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Experiment 1 variant V3. Send a fake request before the SnapStart snapshot.
+  MemorySize:
+    Type: Number
+    Default: 1024
+    AllowedValues: [512, 1024, 1536, 2048, 3008]
+    Description: Lambda memory in MB (CPU grows with memory). Experiment 6 variable.
+  Architecture:
+    Type: String
+    Default: x86_64
+    AllowedValues: [x86_64, arm64]
+  BookingMode:
+    Type: String
+    Default: transactional
+    AllowedValues: [transactional, naive]
+    Description: naive is UNSAFE and exists only for the Experiment 4 contrast. Never use it for the demo.
+  NaiveDelayMs:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 1000
+  StrictTimeRules:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: 'false lets the live demo mark an appointment COMPLETED before its start time.'
+  ExposeDiagnostics:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Adds X-Cold-Start / X-Lambda-Request-Id response headers used by the cold-start probe.
+  ReservedConcurrency:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    Description: 0 = no reservation. Set e.g. 5 for the Experiment 3 throttling run (needs account quota above 100).
+  ApiThrottleRate:
+    Type: Number
+    Default: 200
+    Description: Steady-state requests per second allowed by API Gateway (protects the credits).
+  ApiThrottleBurst:
+    Type: Number
+    Default: 100
+  AlarmEmail:
+    Type: String
+    Default: ''
+    Description: Optional email for CloudWatch alarms (confirm the SNS subscription email).
+  LogRetentionDays:
+    Type: Number
+    Default: 7
+    AllowedValues: [1, 3, 5, 7, 14, 30]
+
+Conditions:
+  HasReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
+  HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, '']]
+
+# ---------------------------------------------------------------------------
+# Settings shared by the three functions.
+# ---------------------------------------------------------------------------
+Globals:
+  Function:
+    Runtime: java21
+    MemorySize: !Ref MemorySize
+    Timeout: 29                       # API Gateway HTTP API waits at most 30 s
+    Architectures: [!Ref Architecture]
+    AutoPublishAlias: live            # API Gateway invokes the alias "live" -> needed for SnapStart
+    SnapStart:
+      ApplyOn: !Ref SnapStartMode
+    ReservedConcurrentExecutions: !If [HasReservedConcurrency, !Ref ReservedConcurrency, !Ref AWS::NoValue]
+    Environment:
+      Variables:
+        USERS_TABLE: !Ref UsersTable
+        DOCTORS_TABLE: !Ref DoctorsTable
+        SLOTS_TABLE: !Ref SlotsTable
+        APPOINTMENTS_TABLE: !Ref AppointmentsTable
+        EXPOSE_DIAGNOSTICS: !Ref ExposeDiagnostics
+        PRIMING_ENABLED: !Ref PrimingEnabled
+        # Faster JVM start: stop JIT at the C1 tier (common cold-start optimisation for Java on Lambda).
+        JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+        # Changed by scripts/cold_start_probe.py to force new execution environments.
+        COLD_MARKER: initial
+    Tags:
+      Project: practo-lite
+
+Resources:
+  # =========================================================================
+  # Amazon Cognito: users, groups (roles) and the app client used to log in.
+  # =========================================================================
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-users
+      UsernameAttributes: [email]
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true    # no public SignUp: POST /auth/register is the only way in
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      DeletionProtection: INACTIVE
+      UserPoolTags:
+        Project: practo-lite
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${AWS::StackName}-client
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH        # Postman / k6 / scripts log in with email + password
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  PatientGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Patient
+      UserPoolId: !Ref UserPool
+  DoctorGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Doctor
+      UserPoolId: !Ref UserPool
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Admin
+      UserPoolId: !Ref UserPool
+
+  # =========================================================================
+  # Amazon DynamoDB: four on-demand tables (pay per request, no capacity planning).
+  # Key schemas must match test-support/LocalTables.java and scripts/local_tables.py.
+  # =========================================================================
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: userId, AttributeType: S}
+      KeySchema:
+        - {AttributeName: userId, KeyType: HASH}
+      Tags: [{Key: Project, Value: practo-lite}]
+
+  DoctorsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Doctors
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: doctorId, AttributeType: S}
+        - {AttributeName: searchCity, AttributeType: S}
+        - {AttributeName: specKey, AttributeType: S}
+      KeySchema:
+        - {AttributeName: doctorId, KeyType: HASH}
+      GlobalSecondaryIndexes:
+        - IndexName: search-index        # sparse: only verified doctors have searchCity/specKey
+          KeySchema:
+            - {AttributeName: searchCity, KeyType: HASH}
+            - {AttributeName: specKey, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+      Tags: [{Key: Project, Value: practo-lite}]
+
+  SlotsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Slots
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: doctorId, AttributeType: S}
+        - {AttributeName: slotStart, AttributeType: S}
+      KeySchema:
+        - {AttributeName: doctorId, KeyType: HASH}
+        - {AttributeName: slotStart, KeyType: RANGE}
+      Tags: [{Key: Project, Value: practo-lite}]
+
+  AppointmentsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Appointments
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: appointmentId, AttributeType: S}
+        - {AttributeName: patientId, AttributeType: S}
+        - {AttributeName: doctorId, AttributeType: S}
+        - {AttributeName: slotStart, AttributeType: S}
+      KeySchema:
+        - {AttributeName: appointmentId, KeyType: HASH}
+      GlobalSecondaryIndexes:
+        - IndexName: patient-index
+          KeySchema:
+            - {AttributeName: patientId, KeyType: HASH}
+            - {AttributeName: slotStart, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+        - IndexName: doctor-index
+          KeySchema:
+            - {AttributeName: doctorId, KeyType: HASH}
+            - {AttributeName: slotStart, KeyType: RANGE}
+          Projection: {ProjectionType: ALL}
+      Tags: [{Key: Project, Value: practo-lite}]
+
+  # =========================================================================
+  # API Gateway HTTP API with a Cognito JWT authorizer.
+  # =========================================================================
+  ApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /practo-lite/${AWS::StackName}/api-access
+      RetentionInDays: !Ref LogRetentionDays
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        DefaultAuthorizer: CognitoJwt
+        Authorizers:
+          CognitoJwt:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience:
+                - !Ref UserPoolClient
+      DefaultRouteSettings:
+        ThrottlingRateLimit: !Ref ApiThrottleRate
+        ThrottlingBurstLimit: !Ref ApiThrottleBurst
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogs.Arn
+        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLatency":"$context.responseLatency","integrationLatency":"$context.integrationLatency","integrationStatus":"$context.integrationStatus","integrationError":"$context.integrationErrorMessage","authorizerError":"$context.authorizer.error","requestTimeEpoch":"$context.requestTimeEpoch"}'
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowHeaders: [authorization, content-type, idempotency-key]
+        AllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+        ExposeHeaders: [x-cold-start, x-lambda-request-id, x-function-version]
+        MaxAge: 600
+      Tags:
+        Project: practo-lite
+
+  # =========================================================================
+  # Lambda functions. Each is a Spring Boot application packaged by Maven as a zip.
+  # The log group is created first (DependsOn) so its 7-day retention applies even
+  # to the logs written while SnapStart initialises a new version.
+  # =========================================================================
+  UsersLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-users
+      RetentionInDays: !Ref LogRetentionDays
+
+  UsersFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: UsersLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-users
+      Description: Spring Boot - register, own profile, admin doctor verification
+      CodeUri: ../users-service/target/users-service-lambda.zip
+      Handler: edu.dau.practolite.users.StreamLambdaHandler::handleRequest
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:DeleteItem]
+              Resource: [!GetAtt UsersTable.Arn, !GetAtt DoctorsTable.Arn]
+            - Effect: Allow
+              Action: [cognito-idp:AdminCreateUser, cognito-idp:AdminSetUserPassword,
+                       cognito-idp:AdminAddUserToGroup, cognito-idp:AdminDeleteUser]
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Register:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/auth/register', Auth: {Authorizer: NONE}}
+        GetMe:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/users/me'}
+        PatchMe:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: PATCH, Path: '/users/me'}
+        VerifyDoctor:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: PATCH, Path: '/admin/doctors/{doctorId}/verify'}
+
+  DoctorsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-doctors
+      RetentionInDays: !Ref LogRetentionDays
+
+  DoctorsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: DoctorsLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-doctors
+      Description: Spring Boot - doctor profiles, search, slots
+      CodeUri: ../doctors-service/target/doctors-service-lambda.zip
+      Handler: edu.dau.practolite.doctors.StreamLambdaHandler::handleRequest
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]
+              Resource: !GetAtt DoctorsTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !Sub ${DoctorsTable.Arn}/index/search-index
+            - Effect: Allow
+              Action: [dynamodb:PutItem, dynamodb:Query, dynamodb:DeleteItem]
+              Resource: !GetAtt SlotsTable.Arn
+      Events:
+        PutProfile:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: PUT, Path: '/doctors/me'}
+        Search:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/doctors', Auth: {Authorizer: NONE}}
+        GetDoctor:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}', Auth: {Authorizer: NONE}}
+        CreateSlots:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/doctors/me/slots'}
+        ListSlots:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/doctors/{doctorId}/slots', Auth: {Authorizer: NONE}}
+        DeleteSlot:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: DELETE, Path: '/doctors/me/slots/{slotStart}'}
+
+  AppointmentsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-appointments
+      RetentionInDays: !Ref LogRetentionDays
+
+  AppointmentsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: AppointmentsLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-appointments
+      Description: Spring Boot - booking (DynamoDB transaction), cancel, status, listing
+      CodeUri: ../appointments-service/target/appointments-service-lambda.zip
+      Handler: edu.dau.practolite.appointments.StreamLambdaHandler::handleRequest
+      Environment:
+        Variables:
+          BOOKING_MODE: !Ref BookingMode
+          NAIVE_DELAY_MS: !Ref NaiveDelayMs
+          STRICT_TIME_RULES: !Ref StrictTimeRules
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
+              Resource: !GetAtt AppointmentsTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query]
+              Resource: !Sub ${AppointmentsTable.Arn}/index/*
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem]   # UpdateItem inside the booking/cancel transaction
+              Resource: !GetAtt SlotsTable.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem]                        # read-only lookups of names / verification
+              Resource: [!GetAtt DoctorsTable.Arn, !GetAtt UsersTable.Arn]
+      Events:
+        Book:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/appointments'}
+        List:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/appointments'}
+        GetOne:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: GET, Path: '/appointments/{appointmentId}'}
+        Cancel:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: POST, Path: '/appointments/{appointmentId}/cancel'}
+        Status:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Method: PATCH, Path: '/appointments/{appointmentId}/status'}
+
+  # =========================================================================
+  # Amazon CloudWatch: one dashboard for the experiments, a few alarms.
+  # =========================================================================
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {"type":"metric","x":0,"y":0,"width":12,"height":6,"properties":{
+              "title":"Lambda invocations / min","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","Invocations","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":12,"y":0,"width":12,"height":6,"properties":{
+              "title":"Lambda concurrent executions (max)","region":"${AWS::Region}","stat":"Maximum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","ConcurrentExecutions","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":0,"y":6,"width":12,"height":6,"properties":{
+              "title":"Lambda duration p95 (ms)","region":"${AWS::Region}","stat":"p95","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","Duration","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":12,"y":6,"width":12,"height":6,"properties":{
+              "title":"Lambda throttles and errors","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/Lambda","Throttles","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"],
+                         ["AWS/Lambda","Errors","FunctionName","${UsersFunction}"],["...","${DoctorsFunction}"],["...","${AppointmentsFunction}"]]}},
+            {"type":"metric","x":0,"y":12,"width":12,"height":6,"properties":{
+              "title":"API latency vs integration latency p95 (ms)","region":"${AWS::Region}","stat":"p95","period":60,"view":"timeSeries",
+              "metrics":[["AWS/ApiGateway","Latency","ApiId","${HttpApi}","Stage","$default"],[".","IntegrationLatency",".",".",".","."]]}},
+            {"type":"metric","x":12,"y":12,"width":12,"height":6,"properties":{
+              "title":"API requests, 4xx, 5xx","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/ApiGateway","Count","ApiId","${HttpApi}","Stage","$default"],[".","4xx",".",".",".","."],[".","5xx",".",".",".","."]]}},
+            {"type":"metric","x":0,"y":18,"width":12,"height":6,"properties":{
+              "title":"DynamoDB consumed write units","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/DynamoDB","ConsumedWriteCapacityUnits","TableName","${SlotsTable}"],["...","${AppointmentsTable}"],["...","${DoctorsTable}"],["...","${UsersTable}"]]}},
+            {"type":"metric","x":12,"y":18,"width":12,"height":6,"properties":{
+              "title":"DynamoDB throttled requests and transaction conflicts","region":"${AWS::Region}","stat":"Sum","period":60,"view":"timeSeries",
+              "metrics":[["AWS/DynamoDB","ThrottledRequests","TableName","${SlotsTable}"],["...","${AppointmentsTable}"],
+                         ["AWS/DynamoDB","TransactionConflict","TableName","${SlotsTable}"]]}}
+          ]
+        }
+
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlarmEmail
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlarmEmail
+      Tags: [{Key: Project, Value: practo-lite}]
+
+  ApiServerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-api-5xx
+      AlarmDescription: API returned 5 or more 5xx responses in 5 minutes
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions:
+        - {Name: ApiId, Value: !Ref HttpApi}
+        - {Name: Stage, Value: $default}
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmEmail, [!Ref AlarmTopic], !Ref AWS::NoValue]
+
+  AppointmentsErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-appointments-errors
+      AlarmDescription: Unhandled errors in the booking function
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{Name: FunctionName, Value: !Ref AppointmentsFunction}]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmEmail, [!Ref AlarmTopic], !Ref AWS::NoValue]
+
+  LambdaThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-lambda-throttles
+      AlarmDescription: Any Lambda throttling in the account (expected only during the capped Experiment 3 run)
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmEmail, [!Ref AlarmTopic], !Ref AWS::NoValue]
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the live API (no trailing slash)
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+  UsersTableName:
+    Value: !Ref UsersTable
+  DoctorsTableName:
+    Value: !Ref DoctorsTable
+  SlotsTableName:
+    Value: !Ref SlotsTable
+  AppointmentsTableName:
+    Value: !Ref AppointmentsTable
+  UsersFunctionName:
+    Value: !Ref UsersFunction
+  DoctorsFunctionName:
+    Value: !Ref DoctorsFunction
+  AppointmentsFunctionName:
+    Value: !Ref AppointmentsFunction
+  DashboardUrl:
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-dashboard

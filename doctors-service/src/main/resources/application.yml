@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: doctors-service
+  config:
+    import: classpath:practo-common.yml
+
+server:
+  port: ${PORT:8082}

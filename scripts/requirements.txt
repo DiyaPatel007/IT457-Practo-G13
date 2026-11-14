@@ -1,0 +1,5 @@
+boto3>=1.35
+requests>=2.32
+pandas>=2.2
+matplotlib>=3.9
+openpyxl>=3.1
