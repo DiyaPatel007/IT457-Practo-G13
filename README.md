@@ -10,4 +10,4 @@
 |---|---|
 | Gautam Modi | 202301214 | 
 | Diya Patel | 202301216 | 
-| Jevik Bhalodiya | 202303021 | 
+| Jevik Bhalodia | 202303021 | 
