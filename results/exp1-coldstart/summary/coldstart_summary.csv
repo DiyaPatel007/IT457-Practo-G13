@@ -1,0 +1,4 @@
+variant,requests,cold_samples,cold_client_p50_ms,cold_client_p95_ms,warm_client_p50_ms,warm_client_p95_ms,init_p50_ms,restore_p50_ms,cold_billed_p50_ms,warm_billed_p50_ms,request1_p50_ms,request100_p50_ms
+snapstart-off,2000,20,5721.219999999999,6160.9555,25.655,39.2015,4293.09,,5376.5,10.0,5721.219999999999,24.605
+snapstart-on,2000,20,2142.975,2440.5895,26.73,39.474999999999994,,766.02,1564.5,10.0,2142.975,25.975
+snapstart-primed,2000,20,1100.65,1244.2485000000001,26.47,38.421,,824.95,474.5,10.0,1100.65,25.325
