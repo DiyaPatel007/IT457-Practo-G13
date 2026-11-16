@@ -32,7 +32,7 @@ Parameters:
     Type: Number
     Default: 1024
     AllowedValues: [512, 1024, 1536, 2048, 3008]
-    Description: Lambda memory in MB (CPU grows with memory). Experiment 6 variable.
+    Description: Lambda memory in MB (CPU grows with memory).
   Architecture:
     Type: String
     Default: x86_64
