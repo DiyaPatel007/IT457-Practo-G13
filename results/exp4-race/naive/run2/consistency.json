@@ -1,0 +1,276 @@
+{
+  "slots": 1060,
+  "bookedSlots": 10,
+  "appointments": 176,
+  "activeAppointments": 176,
+  "violations": 10,
+  "doubleBookedSlots": 10,
+  "details": [
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T04:30:00Z"
+      ],
+      "appointments": [
+        "08a6dee6-feca-4444-80bb-cc045817d045",
+        "2e4f2656-a0b8-489d-8671-6dd9fe72ecf2",
+        "b4c8e247-afe6-438e-8ef1-bea36d4b3186",
+        "a2f914f7-ad04-4b46-b321-537a6e8a9430",
+        "05f757e4-c14b-4116-a59a-0c16cd49ecb3",
+        "13c65aaf-be69-4f01-9cf4-36681a677668",
+        "21b23227-3550-4385-81dd-d46a15b735c1",
+        "60398021-1511-4682-872a-673867087a0c",
+        "4ca687ac-fffe-4f32-980d-6c5233d3238f",
+        "1773d510-1625-44ec-a95e-c022b158c3c5",
+        "363bbb08-eac1-45cb-a2a2-cae2b096a418",
+        "35aea1a8-6d79-4992-a352-1cea3c6110b7",
+        "d99f9d90-2baf-4217-8250-2f7c58f52009"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T05:00:00Z"
+      ],
+      "appointments": [
+        "15ff506f-bea3-413a-a036-db9501087e50",
+        "8f52e8ef-5cbc-4932-aca7-97f0a396f1bc",
+        "085c5ab3-ada1-4ead-ba64-f19d85f90565",
+        "dfeff006-96c1-4147-a0ac-1dcc695a33c5",
+        "3bba9caf-5144-488c-952b-1216f9f27038",
+        "ef5a1d6e-d192-4f76-b3f9-1b8067e44b68",
+        "b0fa4ef2-674e-48c3-8dad-06116634c4e1",
+        "a1a474b6-e14e-44e4-8182-873a416c9e5b",
+        "3979971a-d64d-4cf3-9c33-a3631daf3594",
+        "11f4eedf-5d7f-4cf3-8d1a-1276e01e2148",
+        "a67c9c8b-7da4-4dbd-93ef-5719f186902b",
+        "90960542-b035-455f-9e3d-dd627c5ca313",
+        "de2866b3-7472-4b25-b416-ade878159755",
+        "9ca800b0-53ef-4b50-9934-3c10eb406565",
+        "c9d16b9e-32c0-4495-a12c-fc7e89a0da83",
+        "1d33e3fa-2771-4f2f-800a-6b019a92aa71",
+        "6ab8f677-76de-49c7-9bb6-099d5f6e65ac",
+        "5a91e313-bf38-4f1d-973a-d7682fc5585a",
+        "205a550b-750b-4c0b-936f-35eecdaa9cfa",
+        "ded0d2a4-85e3-4db3-870f-79a45685911a",
+        "5d13354f-f6a2-4a9f-8309-bab58a494053",
+        "15c34784-fa26-4b77-8169-6f9320023480",
+        "3d0d295b-b6ac-4f0c-95f5-e419a481b9e3",
+        "8a7a695f-fd03-46d8-91a6-be05191756f4",
+        "c41bca5e-6ef4-41b5-947a-a08a8570d092",
+        "d0be385d-b37f-481e-a553-140e00c3498e",
+        "139624bd-3f9a-4704-863f-d31bb7ce8483",
+        "7714cabb-e147-47a3-b55a-7e7cc9d01d1a",
+        "c993114b-f93f-4df4-b797-f318543e2a36",
+        "88822c70-7975-4ecf-bbcf-caea477e4aa9"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T05:30:00Z"
+      ],
+      "appointments": [
+        "92bd4321-005c-424e-9662-8c015ab86937",
+        "3d5eac3b-6843-4e6e-a41e-4ffb03e6d86a",
+        "2cdd050e-8a0d-44e6-a615-8917a0dbf8a6",
+        "6ba663f4-d5fc-4029-b093-fc5f4de1f943",
+        "c1840c8a-ddd8-4373-92fd-047d2ea60710",
+        "b8ce5a1e-5e37-43ce-b868-cda9be525644",
+        "e2becbab-62a5-48b1-ad8f-2733ef280beb",
+        "529f61a6-979d-40a8-b873-cdd51eb35681",
+        "911acf10-2c5c-40cc-bb26-a6cc0291c16a",
+        "cf499d80-f866-40ec-b272-92cd7059985b",
+        "ff3d340c-53cc-482f-a535-08ebd51ec018"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T06:00:00Z"
+      ],
+      "appointments": [
+        "06ef515a-f2e2-4dff-80d6-4fd2ccb10ebb",
+        "1925f24b-8c91-4646-974b-a0aaabe6c9d3",
+        "40c24cb5-fec7-49c9-834f-9fba9bb5ae63",
+        "efc03577-b513-42a0-837a-ee14d97beb13",
+        "6407de4f-3d99-4d83-ace0-3940bf1b4fee",
+        "ef8e6526-f70c-4ab7-adb1-abc1b06108a5",
+        "a0465543-c52b-4a7d-a46a-4f087ba09a34",
+        "96b4fb90-5fdc-44f9-b7e6-ed2d2c2e4964",
+        "b0e08c06-5e9f-485d-976f-8292e91ad17f",
+        "43f48fcc-2fed-40fd-a149-d18cc280b4bf"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T06:30:00Z"
+      ],
+      "appointments": [
+        "e27a9e5d-903b-4b58-973a-1fed24f3053e",
+        "1246e7bf-1a96-478d-9100-ce8d6de49f94",
+        "8494d45c-e5f7-49d4-a3a4-57986c992342",
+        "193520b4-b96c-4746-b6cd-6841358dde2b",
+        "7f6af5bc-79a9-4f2a-b9c1-09589fd00ed0",
+        "13e48bda-08c5-4eec-8071-3a72c40d1c28",
+        "2401fca6-2076-41ea-84fb-5c59846202f0",
+        "822c8925-c05d-429a-a090-05fd7922a388",
+        "7c894703-aaa3-4bd6-b965-cbe2e4ce09ab",
+        "8b121fa3-78a8-4440-9e3d-1e578e42a29f",
+        "d52db950-4b55-4ec5-b5d5-302e27d691bd",
+        "5aafc49b-a5df-4d45-8839-8078e6841a50",
+        "35b0ece6-d7f6-44a6-8088-3ee8347ddae3",
+        "3eca6dbe-97ca-4e85-af51-968d2e74f80b",
+        "18b158df-9df4-4bec-bde0-b36eb80a269e",
+        "772afa68-2656-42b1-b0ac-9302b16a0e32",
+        "ea192fa0-ca53-473d-a8a8-aa7f410212de",
+        "ea571978-e6f5-4d2b-82e0-91d3b952ce07",
+        "c07883c8-bd61-40b4-9a3e-85b31877cd55",
+        "fb2096be-77aa-48ca-8b7a-7e34a5329a2f",
+        "d13e1a42-b8d8-4a22-9ec2-13b5b259b487",
+        "e17c1db2-2a25-4b99-b043-f0dfb0212238",
+        "b95ecdf3-fc95-4bf1-afe4-82e3d6a9a18f",
+        "1d003a04-cc8c-49dd-97a4-476353b572ab",
+        "05f46128-1b9b-4e7e-a2b4-2b7445597f33",
+        "dbf038ac-a227-4c21-bdd8-bf9a12f37d11",
+        "477b2375-e5df-49bc-8081-d18005bc846d",
+        "7b879c3e-a8c3-4428-aed0-4d1393c59586"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T09:30:00Z"
+      ],
+      "appointments": [
+        "e42f6d4a-c8c9-43d3-a88c-4468d4daf7f9",
+        "e8ca3318-2e40-48e9-9a7f-bcf9e493e39e",
+        "0300f2b2-5c6c-4e80-a8ba-3b3bb73ef164",
+        "daef1ce0-2522-4fb9-b35b-8f5ec94a1fed"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T10:00:00Z"
+      ],
+      "appointments": [
+        "64038c7c-a337-4ec1-9db6-ef781479ddc2",
+        "7f3e5d8f-3786-48c7-9f2a-09a90dcb0d30",
+        "920be87b-0117-46d8-8713-231ef80c672a",
+        "0a134ef6-8e2f-4e61-9da9-ab365146c405",
+        "b87ea9c7-b9a9-4f2f-9b03-3e8352129369",
+        "0ad35208-650a-48f4-830b-2f7988df403d",
+        "87ecca64-9e71-42c6-b58a-1d56701a14ed",
+        "78faa152-6428-42ab-b4f9-4c09beeee5b1",
+        "13b01dee-cfe6-46b3-9cfa-aeb0bf14520c",
+        "6c3c1831-9d13-4f10-8224-1f5f9047e63c",
+        "7649fb4a-73ca-4149-9d44-b0735b7cde68",
+        "d1451279-ef47-4615-91a8-d5481d05e532",
+        "008ee9d7-db83-415c-bd4e-391a7c4905f8",
+        "3a465c38-5064-40c0-9c0a-edc00b081d6a",
+        "2dcfc214-0832-4438-81ee-b8ba6202d971",
+        "b8992c2c-0d8d-43e6-9f11-5fa04973e085",
+        "3467f7db-ceee-464c-b03c-9401bf2c21e6",
+        "d0bd3a36-fa68-4762-b5d0-ab492c77b102",
+        "2b1cd306-9682-4043-b3fc-920eed7340ca",
+        "5dcf4e2d-191e-485f-8e9f-22fa50941370",
+        "995eea48-60c2-4924-9fe6-4afb00f22c3c",
+        "03513cd7-ca0b-4e2c-8e61-7babc52af94d",
+        "ba8c3312-d448-4570-94e2-7a008e8aee03",
+        "fc940b48-662d-4fe5-9802-1c19a7b6abe3",
+        "43493ba7-0226-4114-abe3-221cad81f446",
+        "2d80afb3-9d56-410f-8064-a86f162e3083",
+        "e3ae9570-743b-4539-8096-6df56b626b13"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T10:30:00Z"
+      ],
+      "appointments": [
+        "38dc197a-efeb-499a-ac56-d46063f34552",
+        "3b2d3e00-55fe-4fd0-8929-e98593933abd",
+        "c90d5d95-4a2d-4dbc-a547-44d311423154",
+        "13d853dd-caad-4944-aa4d-77153c4ce492",
+        "117e6f7c-e1a0-4c32-b590-7ddd52881853",
+        "1c6817b9-2fbd-4300-b646-eb6c8f4aa6b4",
+        "fbdaec6e-f432-49fa-874b-c42be3c4f807",
+        "d6902fe7-a1fe-4d94-afe3-fc7f4a4425ee",
+        "7966c80e-e1f1-407b-9e4a-fa814723346a",
+        "a91bd9bb-552f-4788-9773-60df2b6f3b1a",
+        "5cac5380-6d11-48e4-89c5-25da3dbadbd2",
+        "90a319b2-b3fd-4f95-b6ef-c9312e093c62",
+        "3434d86a-42ee-4809-9f1b-7cab49611e4a",
+        "315764f1-8765-41b4-84d4-ee3e9e392036",
+        "1a012c89-1038-425e-8e06-bd9448d0d26f"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T11:00:00Z"
+      ],
+      "appointments": [
+        "8c55c706-02c9-4683-968d-ae43dc8c64b3",
+        "0495d2ed-7753-49fa-8c0a-ff68a795a08e",
+        "7797478b-6f95-4d7b-a2fb-363f45c9d899",
+        "e52f1b33-28e0-4222-a728-f82354e27fb6",
+        "d78bc852-2e6d-4740-8023-49de49bc38ac",
+        "5dcbb376-b672-4694-838f-dbe5d172b864",
+        "7f4d2292-24ca-46d8-891f-b6be1105af93",
+        "f0d14d02-baa0-4bd8-8cc3-901e5df337ac"
+      ]
+    },
+    {
+      "type": "DOUBLE_BOOKING",
+      "slot": [
+        "31133d9a-d0b1-7064-2932-f7ba3b8419ff",
+        "2026-11-17T11:30:00Z"
+      ],
+      "appointments": [
+        "97054328-8885-41be-9425-04ad41a639bb",
+        "a8379b48-68f4-4766-9049-45b6000f4bc2",
+        "40f60229-3865-437e-af52-9203b98a5345",
+        "46cefe63-762a-4733-afd5-2da20f3c1436",
+        "ce6feeb9-5496-43e7-88d5-56fd94031b94",
+        "6808e496-a89c-47d9-a760-bba8761fb951",
+        "9a5ca11d-af3e-4e63-adbc-fd85ad2d6d9e",
+        "58bdec81-890a-410e-bcd5-541aec4a51d9",
+        "ed7f3f5f-244a-497a-9b0e-481dd6150291",
+        "60f9f623-c863-4df5-8452-6df136b2cdff",
+        "bc9234c5-bb94-482a-8687-afe3f6228ee6",
+        "49deec6d-ea67-4411-9ca8-515895edc5ec",
+        "435e5729-b2a5-46b7-ad05-c660aa9bc6df",
+        "e457fec8-089a-4e11-a414-02949ba171cb",
+        "67963296-3405-4db5-a680-72e9fedf9ae6",
+        "e5e0ac62-d1b2-4442-9236-0f5a299a79fa",
+        "fa8daa56-739e-4c53-88b0-9d3cac4a18b5",
+        "c6f3bb02-8d2c-4b54-ada5-cb1c4446a603",
+        "046e33db-8b3f-4ae3-af00-98b22bb73c17",
+        "9accbd03-cf6a-4b01-a59e-6f583fef1329",
+        "8ec01d15-9ac5-46ee-9525-3d4c14cafbc6",
+        "00855f7f-d69b-4be6-89cc-be0cce286857",
+        "a27a1b1e-1b76-45d6-9013-fbae6f7911df",
+        "ad8e9b46-b007-4221-8973-b83ce586c7ef",
+        "a19fdab4-311c-497a-9af6-53e8401d7bfd",
+        "4aec7b3c-6de9-48e3-9ddf-21271447afaa",
+        "eae3a5e1-78ad-4ecf-b1cb-9cb96a26a857",
+        "ba73e168-2f59-49af-a23f-7415fb7fbe83",
+        "767dd30f-4508-40ec-92f6-80261f9a3b4b",
+        "b01f36d3-4b59-4f46-8854-aeea1f5fa7d9"
+      ]
+    }
+  ]
+}
