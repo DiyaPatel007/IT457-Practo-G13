@@ -1,7 +1,7 @@
 {
   "_instructions": "Fill every null from the official AWS pricing pages for Asia Pacific (Mumbai) ap-south-1, and set read_on to the date you read them. cost_calc.py refuses to run while any price is null, so no price is ever guessed. Write prices PER SINGLE UNIT (e.g. per request, not per million).",
   "region": "ap-south-1",
-  "read_on": null,
+  "read_on": "2026-11-16",
   "sources": {
     "lambda": "https://aws.amazon.com/lambda/pricing/",
     "api_gateway": "https://aws.amazon.com/api-gateway/pricing/",
@@ -9,12 +9,12 @@
     "cloudwatch": "https://aws.amazon.com/cloudwatch/pricing/"
   },
   "prices_usd": {
-    "lambda_per_request": null,
-    "lambda_gb_second_x86": null,
-    "lambda_gb_second_arm": null,
-    "http_api_per_request": null,
-    "dynamodb_per_write_request_unit": null,
-    "dynamodb_per_read_request_unit": null,
-    "cloudwatch_logs_ingest_per_gb": null
+    "lambda_per_request": 0.0000002,
+    "lambda_gb_second_x86": 0.0000166667,
+    "lambda_gb_second_arm": 0.0000133334,
+    "http_api_per_request": 0.00000105,
+    "dynamodb_per_write_request_unit": 0.00000071,
+    "dynamodb_per_read_request_unit": 0.0000001425,
+    "cloudwatch_logs_ingest_per_gb": 0.67
   }
 }

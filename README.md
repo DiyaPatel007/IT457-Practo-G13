@@ -57,12 +57,7 @@ Every pull request was reviewed by another member. Code owners per folder are in
 | E2 latency at 1, 2, 5, 8 users | Done: `results/exp2-latency/` |
 | E3 scaling (ramp, spike, reserved-concurrency cap) | Done: `results/exp3-scaling/` |
 | E4 concurrent booking (safe vs unsafe, cancel race) | Done: `results/exp4-race/` |
-| E5 cost per 1,000 requests | **Not completed yet** (see below) |
-| E6 memory size (512 / 1024 / 2048 MB) | **Not completed yet** (see below) |
-
-**E5 and E6:** they were planned after the load experiments, which were delayed while we waited for AWS to raise the
-account's Lambda concurrency limit (we requested 1,000; 400 was granted on 16 November 2026). With the 400 limit in place,
-E5 and E6 will be completed before the next member's viva.
+| E5 cost per 1,000 requests (from E1–E3 usage, without the free tier) | Done: `cost.json` in each run folder, summary in `results/summary/` |
 
 ## 3. Architecture
 
@@ -106,7 +101,7 @@ More detail: [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md). Practo's reported arc
 ├── experiments/prices.json      AWS prices for E5, filled from the official pricing pages (never guessed)
 ├── results/                     raw experiment data, one folder per experiment and run
 ├── postman/                     Postman collection (32 requests) and its generator
-├── Docs/                        API reference, architecture, diagrams, Week 1 / Week 2 reports
+├── Docs/                        API reference, architecture, diagrams, Week 1 report, final report
 └── .github/                     CI workflow, CODEOWNERS, PR template
 ```
 
@@ -295,5 +290,6 @@ comes from these files.** Raw files are never edited.
   real performance.
 - **One client:** all load came from one EC2 instance in ap-south-1.
 - **Account limits:** a new Free-plan account; Lambda concurrency limit 400 (AWS default 1,000); API limit 200 req/s.
-- **Not completed yet:** E5 and E6 (section 2).
+- **Cost (E5)** is calculated from measured usage and published prices, not taken from the AWS bill. E2's DynamoDB write
+  cost includes the writes of the reset script that ran before each E2 run.
 - **Practo's figures are self-reported** and could not be verified.

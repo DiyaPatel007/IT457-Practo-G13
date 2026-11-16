@@ -258,7 +258,7 @@ def cost(base: Path) -> None:
     rows = []
     for path in sorted(base.rglob("cost.json")):
         c = json.loads(path.read_text())
-        row = {"run": str(path.parent.relative_to(base)), "requests": c["usage"]["api_requests"],
+        row = {"run": path.parent.relative_to(base).as_posix(), "requests": c["usage"]["api_requests"],
                "per_1000_usd": c["cost_per_1000_requests_usd"], "per_1m_usd": c["cost_per_1m_requests_usd"]}
         req = c["usage"]["api_requests"] or c["usage"]["invocations"]
         for k, v in c["cost_usd"].items():
@@ -271,11 +271,63 @@ def cost(base: Path) -> None:
     df.to_csv(o / "cost_summary.csv")
     print(df.to_string())
     parts = [c for c in df.columns if c not in ("requests", "per_1000_usd", "per_1m_usd")]
-    fig, ax = plt.subplots(figsize=(10, 5))
-    df[parts].plot(kind="bar", stacked=True, ax=ax, color=COLORS)
-    ax.set_ylabel("USD per 1,000 requests (no free tier)")
-    ax.set_title("Experiment 5: cost per 1,000 requests by service")
+
+    # One bar per configuration (mean over its runs) instead of one bar per run.
+    df["config"] = [_cost_config(r) for r in df.index]
+    by_config = df.groupby("config").agg(runs=("requests", "size"), requests=("requests", "sum"),
+                                         **{p: (p, "mean") for p in parts + ["per_1000_usd"]})
+    order = [c for c in _COST_ORDER if c in by_config.index] + \
+            sorted(c for c in by_config.index if c not in _COST_ORDER)
+    by_config = by_config.loc[order]
+    by_config.to_csv(o / "cost_by_config.csv")
+    print(by_config.round(6).to_string())
+
+    names = {"lambda_requests": "Lambda requests", "lambda_compute": "Lambda compute (GB-seconds)",
+             "api_gateway": "API Gateway", "dynamodb_writes": "DynamoDB writes",
+             "dynamodb_reads": "DynamoDB reads", "cloudwatch_logs": "CloudWatch Logs"}
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#7f7f7f"]
+    fig, ax = plt.subplots(figsize=(11, 0.55 * len(by_config) + 2.4))
+    left = pd.Series(0.0, index=by_config.index)
+    for p, color in zip(parts, colors):
+        ax.barh(by_config.index, by_config[p], left=left, color=color, label=names.get(p, p),
+                edgecolor="white", linewidth=0.6, height=0.65)
+        left += by_config[p].fillna(0)
+    for y, (label, total) in enumerate(left.items()):
+        ax.text(total, y, f"  ${total:.4f}", va="center", fontsize=9)
+    group = [label.split(" ")[0] for label in by_config.index]   # "E1", "E2", "E3"
+    for i in range(1, len(group)):
+        if group[i] != group[i - 1]:
+            ax.axhline(i - 0.5, color="#bbbbbb", linewidth=0.8)
+    ax.invert_yaxis()
+    ax.set_xlim(0, left.max() * 1.18)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"${v:.4f}"))
+    ax.set_xlabel("USD per 1,000 requests (calculated from measured usage, without the free tier)")
+    ax.set_title("Experiment 5: cost per 1,000 requests by service (mean of runs)")
+    ax.grid(axis="x", color="#e5e5e5")
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.09), ncol=3, frameon=False)
     save(fig, o / "cost_per_1000.png")
+
+
+_COST_ORDER = ["E1 SnapStart off", "E1 SnapStart on", "E1 SnapStart + priming",
+               "E2 1 user", "E2 2 users", "E2 5 users", "E2 8 users",
+               "E3 ramp", "E3 spike", "E3 capped"]
+
+
+def _cost_config(run: str) -> str:
+    """'exp2-latency/vus-5/run2' -> 'E2 5 users', 'exp1-coldstart/snapstart-on/export' -> 'E1 SnapStart on'."""
+    p = run.split("/")
+    if p[0] == "exp1-coldstart" and len(p) > 1:
+        return {"snapstart-off": "E1 SnapStart off", "snapstart-on": "E1 SnapStart on",
+                "snapstart-primed": "E1 SnapStart + priming"}.get(p[1], f"E1 {p[1]}")
+    if p[0] == "exp2-latency" and len(p) > 1 and p[1].startswith("vus-"):
+        n = p[1].split("-")[1]
+        return f"E2 {n} user{'s' if n != '1' else ''}"
+    if p[0] == "exp3-scaling" and len(p) > 1:
+        return f"E3 {p[1]}"
+    return run
 
 
 def main() -> None:

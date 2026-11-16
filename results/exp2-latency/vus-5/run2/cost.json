@@ -1,0 +1,29 @@
+{
+  "run": "D:\\Transfer\\D\\Academics\\Sem 7\\IT457\\IT457-Practo-G13\\results\\exp2-latency\\vus-5\\run2",
+  "prices_read_on": "2026-11-16",
+  "region": "ap-south-1",
+  "usage": {
+    "invocations": 7269,
+    "gb_seconds": 72.4060000000016,
+    "cold_starts": 1,
+    "lines_with_init_added": 0,
+    "architecture": "x86_64",
+    "api_requests": 7269.0,
+    "dynamodb_wru": 3174.0,
+    "dynamodb_rru": 4368.5,
+    "log_gb_ingested": 0.004595
+  },
+  "cost_usd": {
+    "lambda_requests": 0.0014538,
+    "lambda_compute": 0.00120677,
+    "api_gateway": 0.00763245,
+    "dynamodb_writes": 0.00225354,
+    "dynamodb_reads": 0.00062251,
+    "cloudwatch_logs": 0.00307839
+  },
+  "total_usd": 0.01624746,
+  "cost_per_1000_requests_usd": 0.002235,
+  "cost_per_1m_requests_usd": 2.2352,
+  "cost_per_1000_bookings_usd": null,
+  "note": "Computed without free tier from measured usage. Not an AWS bill."
+}
