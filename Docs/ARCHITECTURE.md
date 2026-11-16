@@ -234,7 +234,7 @@ own id, the earlier appointment is returned with **200** instead of a second boo
 | Logs and monitoring | S3 LB logs, Graylog, Sentry | CloudWatch Logs, metrics, dashboard | managed and enough |
 | Demand spikes | COVID-19 growth: 3× (Mar-Nov 2020) and 500% (Mar-May 2020), from two different Practo datasets | spike profile in E3 | tests how serverless reacts to a surge |
 
-## 9. Trade-offs we accept (say these in the viva)
+## 9. Trade-offs we accept 
 
 - **Spring Boot makes cold starts heavier** than plain handlers (more classes to load). We accept it for the
   developer productivity and familiar structure, and measure it in E1, where SnapStart and priming are the mitigation.
