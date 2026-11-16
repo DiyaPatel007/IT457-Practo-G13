@@ -3,16 +3,22 @@
 //   k6 run -e SEED=../../scripts/.seed/seed-output.json -e VUS=10 -e DURATION=3m \
 //          --out csv=../../results/exp2-latency/vus-10/run1/k6.csv.gz latency.js
 //
-// Run once per level (VUS = 1, 5, 10, 25, 50), 3 runs each, with scripts/reset.py before every run.
+// Run once per level (VUS = 1, 2, 5, 8), 3 runs each, with scripts/reset.py before every run.
 // The analysis drops the first 30 s of each run as warm-up.
 // Mix: 60% search, 20% doctor details, 15% slot listing, 5% booking (a booking may get 409 if the slot is
 // taken; 409 is an expected answer, not an error).
+//
+// Think time: each virtual user pauses THINK_SECONDS (default 0.1 s) after every request, like a real user.
+// Without it, users fire requests back to back, and above ~5 users the load exceeds the API Gateway
+// throttle (ApiThrottleRate, 200 req/s), so the run measures 429 rejections instead of the system.
+// Expected load is about VUS / (THINK_SECONDS + latency): 8 users ~ 65 req/s.
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 import { baseUrl, futureSlots, jsonHeaders, patientTokens, pick } from './lib/common.js';
 
 const seed = JSON.parse(open(__ENV.SEED || '../../scripts/.seed/seed-output.json'));
 const BASE = baseUrl(seed);
+const THINK_SECONDS = Number(__ENV.THINK_SECONDS || 0.1);
 
 export const options = {
   scenarios: {
@@ -39,6 +45,11 @@ export function setup() {
 }
 
 export default function (data) {
+  oneRequest(data);
+  sleep(THINK_SECONDS);
+}
+
+function oneRequest(data) {
   const r = Math.random();
   if (r < 0.6) {
     const params = `city=${encodeURIComponent(pick(seed.cities))}`

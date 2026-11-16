@@ -116,11 +116,16 @@ def latency(base: Path) -> None:
         df = df[df["timestamp"] >= df["timestamp"].min() + WARMUP_SECONDS]
         seconds = max(1, df["timestamp"].max() - df["timestamp"].min())
         for route, g in df.groupby("name"):
+            # Latency only from real answers: a 429 (API Gateway throttle) returns in ~2 ms and would make
+            # the system look faster than it is. Throttled and other failed requests are counted separately.
+            ok = g[g["status"].isin([200, 201, 409])]
             rows.append({"vus": vus, "run": run, "route": route, "requests": len(g),
-                         "throughput_rps": len(g) / seconds,
-                         "p50": g["metric_value"].quantile(.5), "p95": g["metric_value"].quantile(.95),
-                         "p99": g["metric_value"].quantile(.99),
-                         "error_pct": 100 * (~g["status"].isin([200, 201, 409])).mean()})
+                         "throughput_rps": len(ok) / seconds,
+                         "attempted_rps": len(g) / seconds,
+                         "p50": ok["metric_value"].quantile(.5), "p95": ok["metric_value"].quantile(.95),
+                         "p99": ok["metric_value"].quantile(.99),
+                         "throttled_pct": 100 * (g["status"] == 429).mean(),
+                         "error_pct": 100 * (~g["status"].isin([200, 201, 409, 429])).mean()})
     if not rows:
         sys.exit(f"no vus-*/run*/k6.csv(.gz) under {base}")
     per_run = pd.DataFrame(rows)
@@ -129,6 +134,7 @@ def latency(base: Path) -> None:
     agg = per_run.groupby(["route", "vus"]).agg(
         runs=("run", "nunique"), p50_mean=("p50", "mean"), p95_mean=("p95", "mean"), p95_min=("p95", "min"),
         p95_max=("p95", "max"), p99_mean=("p99", "mean"), throughput_rps=("throughput_rps", "mean"),
+        attempted_rps=("attempted_rps", "mean"), throttled_pct=("throttled_pct", "mean"),
         error_pct=("error_pct", "mean")).reset_index()
     agg.to_csv(o / "latency_summary.csv", index=False)
     print(agg.round(1).to_string(index=False))
