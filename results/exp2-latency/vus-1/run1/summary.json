@@ -1,0 +1,53 @@
+{
+  "stack": "practo-lite",
+  "start": "2026-11-16T05:57:46.027153+00:00",
+  "end": "2026-11-16T06:03:46.027153+00:00",
+  "functions": {
+    "practo-lite-appointments": {
+      "invocations": 63,
+      "cold_starts": 1,
+      "duration_p50": 36.92,
+      "duration_p95": 82.26,
+      "duration_p99": 1807.65,
+      "billed_ms_total": 4782.0
+    },
+    "practo-lite-doctors": {
+      "invocations": 1312,
+      "cold_starts": 1,
+      "duration_p50": 8.05,
+      "duration_p95": 15.65,
+      "duration_p99": 26.36,
+      "billed_ms_total": 14561.0
+    }
+  },
+  "routes": {
+    "GET /doctors": {
+      "count": 842,
+      "total_p50": 6.46,
+      "total_p95": 9.17,
+      "dynamo_p50": 5.04,
+      "dynamo_p95": 6.54
+    },
+    "GET /doctors/{doctorId}": {
+      "count": 264,
+      "total_p50": 5.58,
+      "total_p95": 7.98,
+      "dynamo_p50": 4.31,
+      "dynamo_p95": 5.72
+    },
+    "GET /doctors/{doctorId}/slots": {
+      "count": 206,
+      "total_p50": 10.82,
+      "total_p95": 17.0,
+      "dynamo_p50": 9.09,
+      "dynamo_p95": 13.3
+    },
+    "POST /appointments": {
+      "count": 63,
+      "total_p50": 34.37,
+      "total_p95": 79.0,
+      "dynamo_p50": 29.99,
+      "dynamo_p95": 74.79
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "stack": "practo-lite",
+  "start": "2026-11-16T06:14:56.195630+00:00",
+  "end": "2026-11-16T06:20:56.195630+00:00",
+  "functions": {
+    "practo-lite-appointments": {
+      "invocations": 161,
+      "cold_starts": 0,
+      "duration_p50": 28.84,
+      "duration_p95": 36.07,
+      "duration_p99": 61.23,
+      "billed_ms_total": 4917.0
+    },
+    "practo-lite-doctors": {
+      "invocations": 2693,
+      "cold_starts": 1,
+      "duration_p50": 7.94,
+      "duration_p95": 16.56,
+      "duration_p99": 27.36,
+      "billed_ms_total": 28359.0
+    }
+  },
+  "routes": {
+    "GET /doctors": {
+      "count": 1676,
+      "total_p50": 6.33,
+      "total_p95": 11.26,
+      "dynamo_p50": 5.2,
+      "dynamo_p95": 9.07
+    },
+    "GET /doctors/{doctorId}": {
+      "count": 591,
+      "total_p50": 5.37,
+      "total_p95": 9.0,
+      "dynamo_p50": 4.38,
+      "dynamo_p95": 7.24
+    },
+    "GET /doctors/{doctorId}/slots": {
+      "count": 426,
+      "total_p50": 10.93,
+      "total_p95": 18.94,
+      "dynamo_p50": 9.6,
+      "dynamo_p95": 15.67
+    },
+    "POST /appointments": {
+      "count": 161,
+      "total_p50": 26.83,
+      "total_p95": 33.27,
+      "dynamo_p50": 24.22,
+      "dynamo_p95": 31.1
+    }
+  }
+}
+Exported 138 metric points, 2854 REPORT lines, 2854 request lines, 2854 access log lines to results/exp2-latency/vus-2/run1
