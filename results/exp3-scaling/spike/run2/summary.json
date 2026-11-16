@@ -1,0 +1,38 @@
+{
+  "stack": "practo-lite",
+  "start": "2026-11-16T08:48:14+00:00",
+  "end": "2026-11-16T08:53:44+00:00",
+  "functions": {
+    "practo-lite-doctors": {
+      "invocations": 13979,
+      "cold_starts": 5,
+      "duration_p50": 7.56,
+      "duration_p95": 12.99,
+      "duration_p99": 21.45,
+      "billed_ms_total": 133932.0
+    }
+  },
+  "routes": {
+    "GET /doctors": {
+      "count": 8394,
+      "total_p50": 6.25,
+      "total_p95": 9.05,
+      "dynamo_p50": 5.17,
+      "dynamo_p95": 7.18
+    },
+    "GET /doctors/{doctorId}": {
+      "count": 3501,
+      "total_p50": 4.89,
+      "total_p95": 7.43,
+      "dynamo_p50": 3.94,
+      "dynamo_p95": 5.85
+    },
+    "GET /doctors/{doctorId}/slots": {
+      "count": 2084,
+      "total_p50": 9.82,
+      "total_p95": 14.69,
+      "dynamo_p50": 8.55,
+      "dynamo_p95": 12.55
+    }
+  }
+}
