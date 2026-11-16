@@ -1,0 +1,7 @@
+mode,run,201,409,503,other,slots,slots_with_more_than_one_201
+naive,run1,280,720,0,0,10,10.0
+naive,run2,176,824,0,0,10,10.0
+naive,run3,145,855,0,0,10,10.0
+transactional,run1,10,990,0,0,10,0.0
+transactional,run2,10,990,0,0,10,0.0
+transactional,run3,10,990,0,0,10,0.0

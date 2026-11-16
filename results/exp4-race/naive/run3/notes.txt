@@ -1,0 +1,1 @@
+utc=2026-11-16T11:14:45Z mode=naive run=3 racers=100 slots=10 DeployLabel=e4naive1 NaiveDelayMs=0 ApiThrottleBurst=300 client=ec2-t3.micro-ap-south-1

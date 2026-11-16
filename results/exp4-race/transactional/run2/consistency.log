@@ -1,0 +1,9 @@
+{
+  "slots": 1060,
+  "bookedSlots": 10,
+  "appointments": 10,
+  "activeAppointments": 10,
+  "violations": 0,
+  "doubleBookedSlots": 0,
+  "details": []
+}
