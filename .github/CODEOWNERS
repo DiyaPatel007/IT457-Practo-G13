@@ -1,6 +1,6 @@
 # Replace the placeholders with your real GitHub usernames (keep the @ in this file only).
 # The owner is requested automatically as a reviewer for changes to these paths.
-# Member A = Diya, Member B = Jevik, Member C = Gautam (change if you swap slices).
+# Member A = Jevik (identity, platform, E1, E5), Member B = Gautam (doctors, E2, E3), Member C = Diya (booking, E4).
 
 /users-service/            @JevikBhalodia
 /doctors-service/          @2601Gautam
