@@ -1,0 +1,5 @@
+route,gateway_ms,code_ms,dynamodb_ms
+GET /doctors,1.0,0.9800000000000004,5.11
+GET /doctors/{id},1.0,0.8600000000000003,4.195
+GET /doctors/{id}/slots,1.0,1.17,9.285
+POST /appointments,1.0,2.0200000000000014,24.45
