@@ -1,0 +1,8 @@
+component,usd,usd_per_1000_requests
+lambda_requests,0.0002796,0.0002
+lambda_compute,0.00030082,0.00021518
+api_gateway,0.0014679,0.00105
+dynamodb_writes,0.00051546,0.00036871
+dynamodb_reads,0.00012248,8.761e-05
+cloudwatch_logs,0.0005923,0.00042367
+TOTAL,0.00327855,0.002345

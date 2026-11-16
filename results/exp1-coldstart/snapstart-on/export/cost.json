@@ -1,0 +1,29 @@
+{
+  "run": "D:\\Transfer\\D\\Academics\\Sem 7\\IT457\\IT457-Practo-G13\\results\\exp1-coldstart\\snapstart-on\\export",
+  "prices_read_on": "2026-11-16",
+  "region": "ap-south-1",
+  "usage": {
+    "invocations": 2000,
+    "gb_seconds": 60.60600000000024,
+    "cold_starts": 20,
+    "lines_with_init_added": 0,
+    "architecture": "x86_64",
+    "api_requests": 1900.0,
+    "dynamodb_wru": 0.0,
+    "dynamodb_rru": 950.0,
+    "log_gb_ingested": 0.001243
+  },
+  "cost_usd": {
+    "lambda_requests": 0.0004,
+    "lambda_compute": 0.0010101,
+    "api_gateway": 0.001995,
+    "dynamodb_writes": 0.0,
+    "dynamodb_reads": 0.00013538,
+    "cloudwatch_logs": 0.00083286
+  },
+  "total_usd": 0.00437333,
+  "cost_per_1000_requests_usd": 0.002302,
+  "cost_per_1m_requests_usd": 2.3018,
+  "cost_per_1000_bookings_usd": null,
+  "note": "Computed without free tier from measured usage. Not an AWS bill."
+}
