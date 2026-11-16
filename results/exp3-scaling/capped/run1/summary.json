@@ -1,0 +1,53 @@
+{
+  "stack": "practo-lite",
+  "start": "2026-11-16T09:31:38+00:00",
+  "end": "2026-11-16T09:42:29+00:00",
+  "functions": {
+    "practo-lite-doctors": {
+      "invocations": 24173,
+      "cold_starts": 7,
+      "duration_p50": 7.11,
+      "duration_p95": 12.51,
+      "duration_p99": 18.35,
+      "billed_ms_total": 218143.0
+    },
+    "practo-lite-users": {
+      "invocations": 4,
+      "cold_starts": 1,
+      "duration_p50": 374.73,
+      "duration_p95": 2118.05,
+      "duration_p99": 2118.05,
+      "billed_ms_total": 3545.0
+    }
+  },
+  "routes": {
+    "GET /doctors": {
+      "count": 14447,
+      "total_p50": 5.75,
+      "total_p95": 8.78,
+      "dynamo_p50": 4.79,
+      "dynamo_p95": 6.87
+    },
+    "GET /doctors/{doctorId}": {
+      "count": 6031,
+      "total_p50": 4.62,
+      "total_p95": 7.33,
+      "dynamo_p50": 3.8,
+      "dynamo_p95": 5.72
+    },
+    "GET /doctors/{doctorId}/slots": {
+      "count": 3695,
+      "total_p50": 9.14,
+      "total_p95": 14.22,
+      "dynamo_p50": 8.06,
+      "dynamo_p95": 12.27
+    },
+    "POST /auth/register": {
+      "count": 4,
+      "total_p50": 369.54,
+      "total_p95": 1838.33,
+      "dynamo_p50": 0.0,
+      "dynamo_p95": 0.0
+    }
+  }
+}
