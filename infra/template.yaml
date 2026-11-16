@@ -9,6 +9,15 @@ Description: >
 # "sam deploy --parameter-overrides ..." and never a code change.
 # ---------------------------------------------------------------------------
 Parameters:
+  DeployLabel:
+    Type: String
+    Default: initial
+    AllowedPattern: '^[A-Za-z0-9]+$'
+    Description: >
+      Give every deploy that changes a setting a NEW label (letters and digits only, e.g. defaults2, e4naive1).
+      SAM publishes a new Lambda version, and moves the "live" alias to it, only when the code or this label
+      changes. Without a new label, a settings-only deploy updates $LATEST but API Gateway keeps calling
+      the old version through the alias.
   SnapStartMode:
     Type: String
     Default: PublishedVersions
@@ -291,6 +300,7 @@ Resources:
     DependsOn: UsersLogGroup
     Properties:
       FunctionName: !Sub ${AWS::StackName}-users
+      AutoPublishCodeSha256: !Ref DeployLabel   # new label -> new version + alias update (see DeployLabel)
       Description: Spring Boot - register, own profile, admin doctor verification
       CodeUri: ../users-service/target/users-service-lambda.zip
       Handler: edu.dau.practolite.users.StreamLambdaHandler::handleRequest
@@ -332,6 +342,7 @@ Resources:
     DependsOn: DoctorsLogGroup
     Properties:
       FunctionName: !Sub ${AWS::StackName}-doctors
+      AutoPublishCodeSha256: !Ref DeployLabel   # new label -> new version + alias update (see DeployLabel)
       Description: Spring Boot - doctor profiles, search, slots
       CodeUri: ../doctors-service/target/doctors-service-lambda.zip
       Handler: edu.dau.practolite.doctors.StreamLambdaHandler::handleRequest
@@ -378,6 +389,7 @@ Resources:
     DependsOn: AppointmentsLogGroup
     Properties:
       FunctionName: !Sub ${AWS::StackName}-appointments
+      AutoPublishCodeSha256: !Ref DeployLabel   # new label -> new version + alias update (see DeployLabel)
       Description: Spring Boot - booking (DynamoDB transaction), cancel, status, listing
       CodeUri: ../appointments-service/target/appointments-service-lambda.zip
       Handler: edu.dau.practolite.appointments.StreamLambdaHandler::handleRequest
