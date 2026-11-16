@@ -34,23 +34,53 @@ def parse_time(s: str) -> dt.datetime:
     return dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
+ROW_LIMIT = 10000  # Logs Insights returns at most 10,000 rows per query
+
+
+def _run_query(logs, groups: list[str], query: str, start_s: int, end_s: int) -> list[dict]:
+    qid = logs.start_query(logGroupNames=groups, startTime=start_s, endTime=end_s,
+                           queryString=query + f" | limit {ROW_LIMIT}")["queryId"]
+    while True:
+        res = logs.get_query_results(queryId=qid)
+        if res["status"] in ("Complete", "Failed", "Cancelled", "Timeout"):
+            break
+        time.sleep(2)
+    if res["status"] != "Complete":
+        print(f"WARNING: Logs Insights query ended with status {res['status']}")
+    return [{c["field"]: c["value"] for c in r} for r in res.get("results", [])]
+
+
+def _query_window(logs, groups: list[str], query: str, start_s: int, end_s: int) -> list[dict]:
+    """Queries [start_s, end_s]. If the 10,000-row limit is hit, splits the window in two and tries again."""
+    rows = _run_query(logs, groups, query, start_s, end_s)
+    if len(rows) < ROW_LIMIT:
+        return rows
+    if end_s - start_s <= 1:
+        print(f"WARNING: more than {ROW_LIMIT} rows within one second at {start_s}; some rows are missing")
+        return rows
+    mid = (start_s + end_s) // 2
+    return (_query_window(logs, groups, query, start_s, mid)
+            + _query_window(logs, groups, query, mid + 1, end_s))
+
+
 def insights(logs, groups: list[str], query: str, start: dt.datetime, end: dt.datetime) -> list[dict]:
-    """Runs a Logs Insights query in 1-hour slices (max 10,000 rows per query)."""
-    rows = []
-    t = start
-    while t < end:
-        t_end = min(t + dt.timedelta(hours=1), end)
-        qid = logs.start_query(logGroupNames=groups, startTime=int(t.timestamp()), endTime=int(t_end.timestamp()),
-                               queryString=query + " | limit 10000")["queryId"]
-        while True:
-            res = logs.get_query_results(queryId=qid)
-            if res["status"] in ("Complete", "Failed", "Cancelled", "Timeout"):
-                break
-            time.sleep(2)
-        if len(res.get("results", [])) >= 10000:
-            print(f"WARNING: 10,000-row limit reached for {t}..{t_end}; use a shorter window")
-        rows += [{c["field"]: c["value"] for c in r} for r in res.get("results", [])]
-        t = t_end
+    """Runs a Logs Insights query over [start, end] without losing rows to the 10,000-row limit.
+
+    The window is queried in 1-hour slices; any slice that reaches the limit is split in half recursively.
+    Rows are de-duplicated by Logs Insights' @ptr (a unique id per log event), in case a split boundary
+    returns the same event twice.
+    """
+    rows, seen = [], set()
+    t = int(start.timestamp())
+    end_s = int(end.timestamp())
+    while t <= end_s:
+        t_end = min(t + 3600 - 1, end_s)
+        for row in _query_window(logs, groups, query, t, t_end):
+            key = row.get("@ptr") or tuple(sorted(row.items()))
+            if key not in seen:
+                seen.add(key)
+                rows.append(row)
+        t = t_end + 1
     return rows
 
 
